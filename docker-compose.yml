@@ -1,0 +1,24 @@
+services:
+  ytdl:
+    build: .
+    container_name: ytdl
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Téléchargements traités en parallèle.
+      MAX_WORKERS: "2"
+      # Durée de conservation d'un fichier terminé, en secondes.
+      FILE_TTL_SECONDS: "3600"
+      # Nombre maximum de vidéos récupérées pour une playlist.
+      MAX_PLAYLIST_ITEMS: "50"
+      # Décommenter si YouTube réclame une vérification depuis le serveur :
+      # COOKIES_FILE: "/config/cookies.txt"
+    volumes:
+      - downloads:/data
+      # - ./cookies.txt:/config/cookies.txt:ro
+    tmpfs:
+      - /tmp
+
+volumes:
+  downloads:

@@ -1,0 +1,10 @@
+.git
+.gitignore
+__pycache__
+*.pyc
+.venv
+venv
+downloads
+cookies.txt
+README.md
+docker-compose.yml
