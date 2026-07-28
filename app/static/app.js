@@ -13,10 +13,10 @@
     jobsSection: $("jobs-section"), jobs: $("jobs"), clear: $("clear"), tpl: $("job-tpl"),
   };
 
-  const STORAGE_KEY = "ytdl.jobs";
   const ACTIVE = new Set(["queued", "downloading", "processing"]);
   let mode = "video";
   let poller = null;
+  let pollRate = 0;
 
   // ----------------------------------------------------------------- utils --
 
@@ -49,13 +49,6 @@
     return h ? `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`
              : `${m}:${String(sec).padStart(2, "0")}`;
   };
-
-  const storedIds = () => {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; }
-  };
-  const storeIds = (ids) => localStorage.setItem(STORAGE_KEY, JSON.stringify(ids.slice(0, 30)));
-  const rememberId = (id) => storeIds([id, ...storedIds().filter((x) => x !== id)]);
-  const forgetId = (id) => storeIds(storedIds().filter((x) => x !== id));
 
   // --------------------------------------------------------- mode & options --
 
@@ -194,7 +187,6 @@
   };
 
   async function removeJob(id) {
-    forgetId(id);
     el.jobs.querySelector(`[data-id="${id}"]`)?.remove();
     if (!el.jobs.children.length) el.jobsSection.classList.add("hidden");
     try { await api(`/api/jobs/${id}`, { method: "DELETE" }); } catch { /* déjà nettoyé */ }
@@ -204,25 +196,36 @@
     try { await api(`/api/jobs/${id}/cancel`, { method: "POST" }); } catch (err) { showError(err.message); }
   }
 
+  // Les jobs vivent côté serveur : tous les appareils du réseau voient la même
+  // liste, quel que soit celui qui a lancé le téléchargement.
   async function poll() {
-    const ids = storedIds();
-    if (!ids.length) return;
+    let jobs;
+    try { jobs = await api("/api/jobs"); } catch { return; }
 
-    const results = await Promise.all(ids.map(async (id) => {
-      try { return await api(`/api/jobs/${id}`); }
-      catch { forgetId(id); el.jobs.querySelector(`[data-id="${id}"]`)?.remove(); return null; }
-    }));
+    const seen = new Set(jobs.map((j) => j.id));
+    el.jobs.querySelectorAll("[data-id]").forEach((node) => {
+      if (!seen.has(node.dataset.id)) node.remove();
+    });
 
-    results.filter(Boolean).forEach(renderJob);
+    // Le serveur trie du plus récent au plus ancien ; renderJob empile en tête,
+    // on parcourt donc à l'envers pour retrouver cet ordre à l'écran.
+    [...jobs].reverse().forEach(renderJob);
+
     if (!el.jobs.children.length) el.jobsSection.classList.add("hidden");
 
-    const stillActive = results.some((j) => j && ACTIVE.has(j.status));
-    if (!stillActive && poller) { clearInterval(poller); poller = null; }
+    // Cadence rapide tant qu'un téléchargement tourne, lente sinon — il faut
+    // continuer à interroger pour voir arriver les jobs des autres appareils.
+    setRate(jobs.some((j) => ACTIVE.has(j.status)) ? 800 : 4000);
   }
 
-  const startPolling = () => {
-    if (!poller) poller = setInterval(poll, 800);
+  const setRate = (ms) => {
+    if (pollRate === ms && poller) return;
+    pollRate = ms;
+    if (poller) clearInterval(poller);
+    poller = setInterval(poll, ms);
   };
+
+  const startPolling = () => setRate(800);
 
   // ---------------------------------------------------------------- submit --
 
@@ -243,7 +246,6 @@
     el.submit.textContent = "Lancement…";
     try {
       const job = await api("/api/download", { method: "POST", body: JSON.stringify(payload) });
-      rememberId(job.id);
       renderJob(job);
       startPolling();
     } catch (err) {
@@ -255,13 +257,14 @@
   });
 
   el.clear.addEventListener("click", async () => {
-    await Promise.all(storedIds().map(removeJob));
+    const ids = [...el.jobs.querySelectorAll("[data-id]")].map((n) => n.dataset.id);
+    await Promise.all(ids.map(removeJob));
   });
 
   // Reprise de l'état après un rechargement de page.
   (async () => {
     applyMode();
-    if (storedIds().length) { await poll(); startPolling(); }
+    await poll();
     const shared = new URLSearchParams(location.search).get("url");
     if (shared) { el.url.value = shared; el.url.dispatchEvent(new Event("input")); }
   })();

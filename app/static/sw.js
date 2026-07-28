@@ -1,6 +1,6 @@
 // Service worker minimal : met en cache la coquille de l'app pour l'usage PWA.
 // Tout ce qui touche /api passe systématiquement par le réseau.
-const CACHE = "ytdl-v1";
+const CACHE = "ytdl-v2";
 const SHELL = ["/", "/index.html", "/styles.css", "/app.js", "/icon.svg", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
