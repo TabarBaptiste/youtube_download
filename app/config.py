@@ -33,8 +33,19 @@ MAX_PLAYLIST_ITEMS = _int("MAX_PLAYLIST_ITEMS", 50)
 COOKIES_FILE = os.environ.get("COOKIES_FILE") or None
 
 # Clients du player YouTube utilisés par yt-dlp, séparés par des virgules.
+# À laisser vide : les valeurs par défaut de yt-dlp sont les mieux tenues à jour,
+# et forcer une liste (android, ios, web…) fait retomber la vidéo en 360p.
 PLAYER_CLIENTS = [
     c.strip() for c in os.environ.get("PLAYER_CLIENTS", "").split(",") if c.strip()
 ]
+
+# Runtimes JavaScript autorisés pour résoudre le « n challenge » de YouTube.
+# Sans runtime, yt-dlp ne déchiffre pas les URLs des flux HD.
+# yt-dlp attend un dict {runtime: {config}} ; la config par défaut suffit ici.
+JS_RUNTIMES = {
+    r.strip(): {}
+    for r in os.environ.get("JS_RUNTIMES", "deno,node").split(",")
+    if r.strip()
+}
 
 DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)

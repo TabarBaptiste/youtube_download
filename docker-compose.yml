@@ -12,8 +12,6 @@ services:
       FILE_TTL_SECONDS: "3600"
       # Nombre maximum de vidéos récupérées pour une playlist.
       MAX_PLAYLIST_ITEMS: "50"
-      # Clients du player YouTube à essayer (contourne souvent les 403/vérifications).
-      PLAYER_CLIENTS: "android,ios,web"
       # Décommenter si YouTube réclame une vérification depuis le serveur :
       # COOKIES_FILE: "/config/cookies.txt"
     volumes:

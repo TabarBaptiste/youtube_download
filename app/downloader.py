@@ -43,6 +43,8 @@ def base_opts() -> dict:
         "noplaylist": True,
         "restrictfilenames": False,
         "windowsfilenames": True,
+        # Seul Deno est activé par défaut ; on déclare Node, fourni par l'image.
+        "js_runtimes": config.JS_RUNTIMES,
     }
     if config.COOKIES_FILE:
         opts["cookiefile"] = config.COOKIES_FILE

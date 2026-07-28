@@ -1,8 +1,10 @@
 FROM python:3.12-slim
 
-# FFmpeg est indispensable pour fusionner les flux et convertir en MP3/MP4.
+# FFmpeg fusionne les flux et convertit en MP3/MP4.
+# Node sert de runtime JavaScript à yt-dlp : sans lui, le « n challenge » de
+# YouTube n'est pas résolu, ce qui provoque des 403 et limite la vidéo au 360p.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg \
+    && apt-get install -y --no-install-recommends ffmpeg nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /srv
