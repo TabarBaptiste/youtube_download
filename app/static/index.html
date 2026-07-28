@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>YT Downloader</title>
+  <meta name="description" content="Téléchargez des vidéos YouTube en MP4 ou MP3." />
+  <meta name="theme-color" content="#0f1115" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/icon.svg" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="28" height="28"><path fill="currentColor" d="M12 3a1 1 0 0 1 1 1v8.59l2.3-2.3a1 1 0 1 1 1.4 1.42l-4 4a1 1 0 0 1-1.4 0l-4-4a1 1 0 1 1 1.4-1.42l2.3 2.3V4a1 1 0 0 1 1-1Zm-7 14a1 1 0 0 1 1 1v1h12v-1a1 1 0 1 1 2 0v2a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1Z"/></svg>
+      </div>
+      <div>
+        <h1>YT Downloader</h1>
+        <p class="tagline">Colle une URL, choisis un format, télécharge.</p>
+      </div>
+    </header>
+
+    <main>
+      <section class="card">
+        <form id="form" autocomplete="off">
+          <div class="url-row">
+            <input
+              id="url"
+              type="url"
+              inputmode="url"
+              placeholder="https://www.youtube.com/watch?v=..."
+              aria-label="URL de la vidéo"
+              required
+            />
+            <button type="button" id="paste" class="ghost" title="Coller">Coller</button>
+          </div>
+
+          <div id="preview" class="preview hidden">
+            <img id="preview-thumb" alt="" hidden />
+            <div class="preview-meta">
+              <strong id="preview-title"></strong>
+              <span id="preview-sub" class="muted"></span>
+            </div>
+          </div>
+
+          <div class="tabs" role="tablist">
+            <button type="button" class="tab active" data-mode="video" role="tab">Vidéo</button>
+            <button type="button" class="tab" data-mode="audio" role="tab">Audio</button>
+          </div>
+
+          <div class="options">
+            <label class="field" id="field-vformat">
+              <span>Conteneur</span>
+              <select id="vformat">
+                <option value="mp4" selected>MP4</option>
+                <option value="mkv">MKV</option>
+                <option value="webm">WebM</option>
+              </select>
+            </label>
+
+            <label class="field" id="field-quality">
+              <span>Qualité</span>
+              <select id="quality">
+                <option value="best" selected>Maximale</option>
+                <option value="2160">2160p (4K)</option>
+                <option value="1440">1440p</option>
+                <option value="1080">1080p</option>
+                <option value="720">720p</option>
+                <option value="480">480p</option>
+                <option value="360">360p</option>
+              </select>
+            </label>
+
+            <label class="field hidden" id="field-aformat">
+              <span>Format audio</span>
+              <select id="aformat">
+                <option value="mp3" selected>MP3</option>
+                <option value="m4a">M4A (AAC)</option>
+                <option value="opus">Opus</option>
+                <option value="wav">WAV</option>
+              </select>
+            </label>
+
+            <label class="field hidden" id="field-bitrate">
+              <span>Débit</span>
+              <select id="bitrate">
+                <option value="320">320 kbps</option>
+                <option value="192" selected>192 kbps</option>
+                <option value="128">128 kbps</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="switches">
+            <label class="switch"><input type="checkbox" id="thumb" checked /><span>Intégrer la miniature</span></label>
+            <label class="switch hidden" id="wrap-subs"><input type="checkbox" id="subs" /><span>Intégrer les sous-titres</span></label>
+            <label class="switch"><input type="checkbox" id="playlist" /><span>Playlist entière (ZIP)</span></label>
+          </div>
+
+          <button type="submit" id="submit" class="primary">Télécharger</button>
+          <p id="error" class="error hidden" role="alert"></p>
+        </form>
+      </section>
+
+      <section id="jobs-section" class="jobs hidden">
+        <div class="jobs-head">
+          <h2>Téléchargements</h2>
+          <button type="button" id="clear" class="ghost small">Tout effacer</button>
+        </div>
+        <ul id="jobs"></ul>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>Les fichiers sont supprimés du serveur automatiquement après 1 h.</span>
+    </footer>
+  </div>
+
+  <template id="job-tpl">
+    <li class="job" data-id="">
+      <div class="job-top">
+        <img class="job-thumb" alt="" hidden />
+        <div class="job-info">
+          <strong class="job-title">Analyse…</strong>
+          <span class="job-stage muted"></span>
+        </div>
+        <button type="button" class="icon-btn job-close" title="Retirer" aria-label="Retirer">×</button>
+      </div>
+      <div class="bar"><div class="bar-fill"></div></div>
+      <div class="job-bottom">
+        <span class="job-pct">0 %</span>
+        <span class="job-rate muted"></span>
+        <a class="dl hidden" download>Enregistrer</a>
+        <button type="button" class="ghost small job-cancel">Annuler</button>
+      </div>
+    </li>
+  </template>
+
+  <script src="/app.js"></script>
+</body>
+</html>

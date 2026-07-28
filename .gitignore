@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+downloads/
+cookies.txt
+.DS_Store
