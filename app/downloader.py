@@ -43,6 +43,7 @@ def base_opts() -> dict:
         "noplaylist": True,
         "restrictfilenames": False,
         "windowsfilenames": True,
+        "nocheckcertificate": True,
     }
     if config.COOKIES_FILE:
         opts["cookiefile"] = config.COOKIES_FILE
