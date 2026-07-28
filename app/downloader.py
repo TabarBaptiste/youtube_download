@@ -116,7 +116,7 @@ def _format_selector(job: Job) -> str:
     return f"bv*{height}+ba/b{height}/bv*+ba/b"
 
 
-def build_opts(job: Job, outdir: Path) -> dict:
+def build_opts(job: Job, outdir: Path, include_subs: bool = True) -> dict:
     opts = base_opts()
     opts["format"] = _format_selector(job)
     opts["outtmpl"] = str(outdir / "%(title).100B [%(id)s].%(ext)s")
@@ -130,7 +130,7 @@ def build_opts(job: Job, outdir: Path) -> dict:
         postprocessors.append(pp)
     else:
         opts["merge_output_format"] = job.fmt
-        if job.embed_subs:
+        if job.embed_subs and include_subs:
             opts["writesubtitles"] = True
             opts["writeautomaticsub"] = True
             opts["subtitleslangs"] = ["fr", "en", "-live_chat"]
@@ -247,13 +247,26 @@ def run_job(job: Job) -> None:
     try:
         job.status = "downloading"
         job.stage = "Analyse de l'URL"
-        opts = build_opts(job, outdir)
         hook, pp_hook = _make_hooks(job)
-        opts["progress_hooks"] = [hook]
-        opts["postprocessor_hooks"] = [pp_hook]
 
-        with yt_dlp.YoutubeDL(opts) as ydl:
-            ydl.download([job.url])
+        try:
+            opts = build_opts(job, outdir)
+            opts["progress_hooks"] = [hook]
+            opts["postprocessor_hooks"] = [pp_hook]
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                ydl.download([job.url])
+        except yt_dlp.utils.DownloadError as exc:
+            if "subtitles" not in str(exc).lower():
+                raise
+            # YouTube limite parfois les requêtes de sous-titres (429) : on
+            # retente sans eux plutôt que d'échouer un job dont la vidéo
+            # elle-même est disponible.
+            log.warning("Job %s : échec des sous-titres, nouvelle tentative sans", job.id)
+            opts = build_opts(job, outdir, include_subs=False)
+            opts["progress_hooks"] = [hook]
+            opts["postprocessor_hooks"] = [pp_hook]
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                ydl.download([job.url])
 
         files = _collect_outputs(outdir)
         if not files:
