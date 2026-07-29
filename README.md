@@ -61,20 +61,47 @@ Toutes les options passent par des variables d'environnement.
 | `FILE_TTL_SECONDS`         | `3600`        | Durée de conservation d'un fichier terminé         |
 | `CLEANUP_INTERVAL_SECONDS` | `300`         | Fréquence du passage de nettoyage                  |
 | `MAX_PLAYLIST_ITEMS`       | `50`          | Nombre maximum de vidéos par playlist              |
-| `COOKIES_FILE`             | –             | Fichier de cookies au format Netscape              |
+| `COOKIES_FILE`             | –             | Chemin d'un fichier de cookies au format Netscape  |
+| `COOKIES_B64`              | –             | Contenu du fichier de cookies encodé en base64     |
+| `COOKIES_CONTENT`          | –             | Contenu du fichier de cookies en clair             |
 | `PLAYER_CLIENTS`           | –             | Clients du player yt-dlp, séparés par des virgules |
 
 ### Cookies
 
-Si le serveur reçoit un message du type « Sign in to confirm you're not a bot »,
-exportez vos cookies au format Netscape depuis votre navigateur, puis :
+Depuis un serveur hébergé (Railway, Render, VPS…), YouTube répond très souvent
+« Sign in to confirm you're not a bot » : les plages d'IP des datacenters sont
+filtrées, alors que la même requête passe sans problème depuis une connexion
+résidentielle. Fournir des cookies de session lève ce blocage.
+
+Exportez les cookies de `youtube.com` au format Netscape depuis votre navigateur
+(extension « Get cookies.txt LOCALLY » ou équivalent).
+
+**En local ou en Docker** — montez le fichier et pointez `COOKIES_FILE` dessus
+(les deux lignes concernées sont déjà présentes, commentées, dans
+`docker-compose.yml`) :
 
 ```bash
 COOKIES_FILE=/chemin/vers/cookies.txt uvicorn app.main:app
 ```
 
-En Docker, montez le fichier et décommentez les deux lignes correspondantes dans
-`docker-compose.yml`.
+**Sur un PaaS** — impossible d'y monter un fichier : passez le contenu par
+variable d'environnement. Préférez `COOKIES_B64`, car le format Netscape repose
+sur de vraies tabulations que les formulaires de configuration convertissent
+souvent en espaces, ce qui rend le fichier silencieusement inutilisable :
+
+```bash
+base64 -w0 < cookies.txt    # macOS : base64 -i cookies.txt
+```
+
+Collez le résultat dans une variable `COOKIES_B64`. Au démarrage, l'application
+le décode vers un fichier privé (`chmod 600`) dans `DOWNLOAD_DIR` et le
+transmet à yt-dlp.
+
+Deux points à connaître avant d'utiliser vos propres cookies : ils donnent accès
+à votre compte Google, donc traitez-les comme un mot de passe (jamais dans le
+dépôt — `.gitignore` les couvre déjà) ; et YouTube invalide régulièrement les
+sessions utilisées depuis une IP de datacenter, ce qui peut déconnecter le
+compte. Un compte secondaire dédié évite les deux problèmes.
 
 ## API
 

@@ -4,4 +4,6 @@ __pycache__/
 venv/
 downloads/
 cookies.txt
+.cookies.txt
+*.cookies.txt
 .DS_Store
