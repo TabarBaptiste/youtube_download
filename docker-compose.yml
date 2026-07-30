@@ -13,6 +13,10 @@ services:
       FILE_TTL_SECONDS: "21600"
       # Nombre maximum de vidéos récupérées pour une playlist.
       MAX_PLAYLIST_ITEMS: "50"
+      # "true" : tous les appareils voient la même liste de téléchargements et
+      # peuvent récupérer les fichiers des autres (pratique en réseau local).
+      # "false" : chaque navigateur ne voit que ses propres téléchargements.
+      SHARE_JOBS: "${SHARE_JOBS:-false}"
       # Décommenter si YouTube réclame une vérification depuis le serveur :
       # COOKIES_FILE: "/config/cookies.txt"
     volumes:
