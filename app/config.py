@@ -10,6 +10,13 @@ def _int(name: str, default: int) -> int:
         return default
 
 
+def _bool(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on", "oui"}
+
+
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 
@@ -27,6 +34,13 @@ CLEANUP_INTERVAL_SECONDS = _int("CLEANUP_INTERVAL_SECONDS", 5 * 60)
 
 # Nombre maximum de vidéos téléchargées quand l'URL est une playlist.
 MAX_PLAYLIST_ITEMS = _int("MAX_PLAYLIST_ITEMS", 50)
+
+# Mise en commun des téléchargements entre appareils.
+# False (défaut) : chaque navigateur ne voit que les jobs qu'il a lancés.
+# True : tous les appareils voient la même liste et peuvent récupérer les
+# fichiers des autres — pratique en réseau local, à éviter sur une instance
+# publique puisque n'importe quel visiteur voit tout.
+SHARE_JOBS = _bool("SHARE_JOBS", False)
 
 # Fichier de cookies au format Netscape (facultatif) pour les vidéos qui
 # exigent une session, ou quand YouTube demande une vérification.

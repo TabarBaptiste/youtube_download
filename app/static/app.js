@@ -13,10 +13,13 @@
     jobsSection: $("jobs-section"), jobs: $("jobs"), clear: $("clear"), tpl: $("job-tpl"),
   };
 
+  const STORAGE_KEY = "ytdl.jobs";
   const ACTIVE = new Set(["queued", "downloading", "processing"]);
   let mode = "video";
   let poller = null;
   let pollRate = 0;
+  // Renseigné depuis /api/health : le serveur décide si les jobs sont partagés.
+  let shareJobs = false;
 
   // ----------------------------------------------------------------- utils --
 
@@ -49,6 +52,14 @@
     return h ? `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`
              : `${m}:${String(sec).padStart(2, "0")}`;
   };
+
+  // Suivi local des jobs lancés par ce navigateur, utilisé hors mode partagé.
+  const storedIds = () => {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; }
+  };
+  const storeIds = (ids) => localStorage.setItem(STORAGE_KEY, JSON.stringify(ids.slice(0, 30)));
+  const rememberId = (id) => storeIds([id, ...storedIds().filter((x) => x !== id)]);
+  const forgetId = (id) => storeIds(storedIds().filter((x) => x !== id));
 
   // --------------------------------------------------------- mode & options --
 
@@ -187,6 +198,7 @@
   };
 
   async function removeJob(id) {
+    forgetId(id);
     el.jobs.querySelector(`[data-id="${id}"]`)?.remove();
     if (!el.jobs.children.length) el.jobsSection.classList.add("hidden");
     try { await api(`/api/jobs/${id}`, { method: "DELETE" }); } catch { /* déjà nettoyé */ }
@@ -196,9 +208,9 @@
     try { await api(`/api/jobs/${id}/cancel`, { method: "POST" }); } catch (err) { showError(err.message); }
   }
 
-  // Les jobs vivent côté serveur : tous les appareils du réseau voient la même
-  // liste, quel que soit celui qui a lancé le téléchargement.
-  async function poll() {
+  // Mode partagé : la liste vient du serveur, donc tous les appareils voient
+  // les mêmes jobs, y compris ceux lancés ailleurs.
+  async function pollShared() {
     let jobs;
     try { jobs = await api("/api/jobs"); } catch { return; }
 
@@ -213,16 +225,42 @@
 
     if (!el.jobs.children.length) el.jobsSection.classList.add("hidden");
 
-    // Cadence rapide tant qu'un téléchargement tourne, lente sinon — il faut
+    // Cadence rapide tant qu'un téléchargement tourne, lente sinon : il faut
     // continuer à interroger pour voir arriver les jobs des autres appareils.
     setRate(jobs.some((j) => ACTIVE.has(j.status)) ? 800 : 4000);
   }
+
+  // Mode privé : on n'interroge que les jobs dont ce navigateur a gardé l'id.
+  async function pollOwn() {
+    const ids = storedIds();
+    if (!ids.length) { stopPolling(); return; }
+
+    const results = await Promise.all(ids.map(async (id) => {
+      try { return await api(`/api/jobs/${id}`); }
+      catch { forgetId(id); el.jobs.querySelector(`[data-id="${id}"]`)?.remove(); return null; }
+    }));
+
+    results.filter(Boolean).forEach(renderJob);
+    if (!el.jobs.children.length) el.jobsSection.classList.add("hidden");
+
+    // Rien en cours : inutile de continuer, aucun job ne peut surgir ailleurs.
+    if (results.some((j) => j && ACTIVE.has(j.status))) setRate(800);
+    else stopPolling();
+  }
+
+  const poll = () => (shareJobs ? pollShared() : pollOwn());
 
   const setRate = (ms) => {
     if (pollRate === ms && poller) return;
     pollRate = ms;
     if (poller) clearInterval(poller);
     poller = setInterval(poll, ms);
+  };
+
+  const stopPolling = () => {
+    if (poller) clearInterval(poller);
+    poller = null;
+    pollRate = 0;
   };
 
   const startPolling = () => setRate(800);
@@ -246,6 +284,7 @@
     el.submit.textContent = "Lancement…";
     try {
       const job = await api("/api/download", { method: "POST", body: JSON.stringify(payload) });
+      rememberId(job.id);
       renderJob(job);
       startPolling();
     } catch (err) {
@@ -257,14 +296,24 @@
   });
 
   el.clear.addEventListener("click", async () => {
-    const ids = [...el.jobs.querySelectorAll("[data-id]")].map((n) => n.dataset.id);
+    // En mode partagé la vue fait référence, sinon on s'en tient à ses propres ids.
+    const ids = shareJobs
+      ? [...el.jobs.querySelectorAll("[data-id]")].map((n) => n.dataset.id)
+      : storedIds();
     await Promise.all(ids.map(removeJob));
   });
 
   // Reprise de l'état après un rechargement de page.
   (async () => {
     applyMode();
+
+    // Le mode de partage est décidé par le serveur ; en cas d'échec on reste sur
+    // le comportement privé, qui n'expose jamais les jobs des autres.
+    try { shareJobs = (await api("/api/health")).shareJobs === true; } catch { /* défaut */ }
+
+    // poll() règle lui-même sa cadence, ou s'arrête s'il n'y a rien à suivre.
     await poll();
+
     const shared = new URLSearchParams(location.search).get("url");
     if (shared) { el.url.value = shared; el.url.dispatchEvent(new Event("input")); }
   })();

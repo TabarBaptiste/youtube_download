@@ -60,7 +60,11 @@ def _validate_url(url: str) -> str:
 
 @app.get("/api/health")
 async def health() -> dict:
-    return {"ok": True, "maxPlaylistItems": config.MAX_PLAYLIST_ITEMS}
+    return {
+        "ok": True,
+        "maxPlaylistItems": config.MAX_PLAYLIST_ITEMS,
+        "shareJobs": config.SHARE_JOBS,
+    }
 
 
 @app.post("/api/info")
@@ -94,6 +98,10 @@ async def download(req: DownloadRequest) -> dict:
 
 @app.get("/api/jobs")
 async def list_jobs() -> list[dict]:
+    # Hors mode partagé, exposer la liste complète reviendrait à dévoiler les
+    # téléchargements des autres appareils : chacun suit ses jobs par leur id.
+    if not config.SHARE_JOBS:
+        raise HTTPException(status_code=403, detail="La mise en commun des jobs est désactivée")
     return [j.to_dict() for j in manager.list()]
 
 

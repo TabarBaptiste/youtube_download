@@ -65,6 +65,13 @@ class JobManager:
     # -- Nettoyage --------------------------------------------------------- #
 
     def _cleanup_loop(self) -> None:
+        # Un premier passage immédiat purge les dossiers orphelins laissés par un
+        # arrêt précédent, sans attendre le premier intervalle.
+        try:
+            self._cleanup_once()
+        except Exception:  # noqa: BLE001
+            log.exception("Échec du nettoyage initial")
+
         while not self._stop.wait(config.CLEANUP_INTERVAL_SECONDS):
             try:
                 self._cleanup_once()
