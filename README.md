@@ -61,17 +61,53 @@ Toutes les options passent par des variables d'environnement.
 | `FILE_TTL_SECONDS`         | `3600`        | Durée de conservation d'un fichier terminé         |
 | `CLEANUP_INTERVAL_SECONDS` | `300`         | Fréquence du passage de nettoyage                  |
 | `MAX_PLAYLIST_ITEMS`       | `50`          | Nombre maximum de vidéos par playlist              |
+| `POT_PROVIDER_URL`         | –             | URL du fournisseur de PO Token (voir ci-dessous)   |
+| `PLAYER_CLIENTS`           | –             | Clients du player yt-dlp, séparés par des virgules |
+| `JS_RUNTIMES`              | `deno,node`   | Runtimes JS activés pour résoudre le n challenge   |
 | `COOKIES_FILE`             | –             | Chemin d'un fichier de cookies au format Netscape  |
 | `COOKIES_B64`              | –             | Contenu du fichier de cookies encodé en base64     |
 | `COOKIES_CONTENT`          | –             | Contenu du fichier de cookies en clair             |
-| `PLAYER_CLIENTS`           | –             | Clients du player yt-dlp, séparés par des virgules |
 
-### Cookies
+### Vérification anti-bot (« Sign in to confirm you're not a bot »)
 
 Depuis un serveur hébergé (Railway, Render, VPS…), YouTube répond très souvent
 « Sign in to confirm you're not a bot » : les plages d'IP des datacenters sont
 filtrées, alors que la même requête passe sans problème depuis une connexion
-résidentielle. Fournir des cookies de session lève ce blocage.
+résidentielle.
+
+**Solution recommandée : un fournisseur de PO Token**, sans compte Google ni
+cookie. Un service annexe génère les jetons que YouTube réclame :
+
+```yaml
+# docker-compose.yml — service déjà présent, image officielle sans état
+bgutil:
+  image: brainicism/bgutil-ytdlp-pot-provider
+```
+
+Puis, sur le service principal :
+
+```bash
+POT_PROVIDER_URL=http://bgutil:4416   # ou l'URL interne de votre PaaS
+PLAYER_CLIENTS=tv_simply
+```
+
+`PLAYER_CLIENTS` est indispensable : le client par défaut de yt-dlp
+(`android_vr`) n'utilise pas de PO Token, donc `POT_PROVIDER_URL` ne serait
+jamais sollicité. `tv_simply` est le seul client testé qui tient un
+téléchargement complet avec un jeton — `mweb`, souvent cité en référence,
+obtient bien un jeton mais coupe le flux vidéo en 403 après quelques pour
+cent.
+
+Le runtime JavaScript compte aussi : yt-dlp exige Node ≥ 22 pour résoudre le
+« n challenge », alors que le paquet Debian `nodejs` s'arrête à la version 20
+et est silencieusement ignoré. L'image embarque donc Deno (`JS_RUNTIMES`
+par défaut), seul runtime activé nativement par yt-dlp.
+
+### Cookies (solution de repli)
+
+Si le fournisseur de PO Token ne suffit plus face à un blocage plus strict,
+les cookies restent disponibles en dernier recours. Fournir des cookies de
+session lève également ce blocage.
 
 Exportez les cookies de `youtube.com` au format Netscape depuis votre navigateur
 (extension « Get cookies.txt LOCALLY » ou équivalent).

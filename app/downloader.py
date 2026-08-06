@@ -319,7 +319,8 @@ def friendly_error(exc: Exception) -> str:
     if "sign in to confirm" in lowered or "not a bot" in lowered:
         return (
             "YouTube demande une vérification depuis ce serveur. "
-            "Renseignez un fichier de cookies via la variable COOKIES_FILE."
+            "Vérifiez PLAYER_CLIENTS et POT_PROVIDER_URL (voir README), ou à "
+            "défaut renseignez des cookies via COOKIES_FILE/COOKIES_B64."
         )
     if "members-only" in lowered or "premium" in lowered:
         return "Cette vidéo est réservée aux membres ou abonnés."
