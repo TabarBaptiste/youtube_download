@@ -48,8 +48,17 @@ def base_opts() -> dict:
     }
     if config.COOKIES_FILE:
         opts["cookiefile"] = config.COOKIES_FILE
+
+    extractor_args: dict[str, dict] = {}
     if config.PLAYER_CLIENTS:
-        opts["extractor_args"] = {"youtube": {"player_client": config.PLAYER_CLIENTS}}
+        extractor_args["youtube"] = {"player_client": config.PLAYER_CLIENTS}
+    if config.POT_PROVIDER_URL:
+        # Le plugin bgutil interroge ce service pour obtenir les PO Tokens que
+        # YouTube réclame aux IP de datacenter, sans compte ni cookies.
+        extractor_args["youtubepot-bgutilhttp"] = {"base_url": [config.POT_PROVIDER_URL]}
+    if extractor_args:
+        opts["extractor_args"] = extractor_args
+
     return opts
 
 

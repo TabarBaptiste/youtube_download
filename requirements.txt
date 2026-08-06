@@ -3,4 +3,6 @@ uvicorn[standard]==0.34.0
 yt-dlp>=2026.7.4
 # Scripts solveurs du « n challenge » YouTube, exécutés par Node.
 yt-dlp-ejs
+# Plugin yt-dlp qui récupère les PO Tokens auprès du service bgutil.
+bgutil-ytdlp-pot-provider
 python-multipart==0.0.20

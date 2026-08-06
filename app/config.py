@@ -101,6 +101,13 @@ PLAYER_CLIENTS = [
     c.strip() for c in os.environ.get("PLAYER_CLIENTS", "").split(",") if c.strip()
 ]
 
+# Service fournissant les PO Tokens (bgutil-ytdlp-pot-provider).
+# YouTube réclame ces jetons aux IP de datacenter, faute de quoi les formats
+# HD sont retirés et le téléchargement échoue en 403. Contrairement aux
+# cookies, ce service n'implique aucun compte Google.
+# Vide = désactivé (inutile depuis une IP résidentielle).
+POT_PROVIDER_URL = os.environ.get("POT_PROVIDER_URL", "").strip() or None
+
 # Runtimes JavaScript autorisés pour résoudre le « n challenge » de YouTube.
 # Sans runtime, yt-dlp ne déchiffre pas les URLs des flux HD.
 # yt-dlp attend un dict {runtime: {config}} ; la config par défaut suffit ici.
