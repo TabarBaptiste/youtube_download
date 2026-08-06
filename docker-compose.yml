@@ -20,6 +20,9 @@ services:
       # Service de PO Tokens, requis quand YouTube réclame une vérification
       # (typiquement depuis une IP de datacenter). Aucun compte Google impliqué.
       POT_PROVIDER_URL: "${POT_PROVIDER_URL:-http://bgutil:4416}"
+      # Vide en local ; "tv_simply" derrière une IP de datacenter, sans quoi le
+      # client par défaut ignore les PO Tokens et YouTube réclame une connexion.
+      PLAYER_CLIENTS: "${PLAYER_CLIENTS:-}"
       # Décommenter si les PO Tokens ne suffisent pas et qu'un compte est requis :
       # COOKIES_FILE: "/config/cookies.txt"
     volumes:

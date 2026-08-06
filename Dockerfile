@@ -1,11 +1,17 @@
 FROM python:3.12-slim
 
 # FFmpeg fusionne les flux et convertit en MP3/MP4.
-# Node sert de runtime JavaScript à yt-dlp : sans lui, le « n challenge » de
-# YouTube n'est pas résolu, ce qui provoque des 403 et limite la vidéo au 360p.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg nodejs \
+    && apt-get install -y --no-install-recommends ffmpeg \
     && rm -rf /var/lib/apt/lists/*
+
+# Runtime JavaScript pour yt-dlp : sans lui, le « n challenge » de YouTube n'est
+# pas résolu, les URLs des flux HD restent indéchiffrables et la vidéo retombe
+# en 360p (voire échoue en 403). Deno plutôt que le paquet Debian `nodejs` :
+# celui-ci fournit Node 20, or yt-dlp exige Node >= 22 et écarte silencieusement
+# les versions antérieures comme « unsupported ». Deno est aussi le seul runtime
+# activé par défaut côté yt-dlp.
+COPY --from=denoland/deno:bin /deno /usr/local/bin/deno
 
 WORKDIR /srv
 

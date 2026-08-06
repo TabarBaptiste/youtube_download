@@ -95,8 +95,14 @@ def _materialize_cookies() -> Optional[str]:
 COOKIES_FILE = COOKIES_FILE or _materialize_cookies()
 
 # Clients du player YouTube utilisés par yt-dlp, séparés par des virgules.
-# À laisser vide : les valeurs par défaut de yt-dlp sont les mieux tenues à jour,
-# et forcer une liste (android, ios, web…) fait retomber la vidéo en 360p.
+# Vide depuis une IP résidentielle : les défauts de yt-dlp sont les mieux tenus
+# à jour, et forcer une liste au hasard (android, ios, web…) fait retomber la
+# vidéo en 360p.
+# Depuis une IP de datacenter en revanche, mettre "tv_simply" : le client par
+# défaut (android_vr) n'utilise pas de PO Token, donc POT_PROVIDER_URL n'est
+# jamais sollicité et YouTube répond « Sign in to confirm you're not a bot ».
+# mweb en réclame bien un mais coupe le flux vidéo en 403 après quelques pour
+# cent ; tv_simply est le seul à tenir un téléchargement complet.
 PLAYER_CLIENTS = [
     c.strip() for c in os.environ.get("PLAYER_CLIENTS", "").split(",") if c.strip()
 ]
