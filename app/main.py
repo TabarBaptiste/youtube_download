@@ -64,6 +64,7 @@ async def health() -> dict:
         "ok": True,
         "maxPlaylistItems": config.MAX_PLAYLIST_ITEMS,
         "shareJobs": config.SHARE_JOBS,
+        "fileTtlSeconds": config.FILE_TTL_SECONDS,
     }
 
 

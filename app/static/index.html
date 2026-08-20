@@ -38,7 +38,7 @@
             <button type="button" id="paste" class="ghost" title="Coller">Coller</button>
           </div>
 
-          <div id="preview" class="preview hidden">
+          <div id="preview" class="preview hidden" aria-busy="false">
             <img id="preview-thumb" alt="" hidden />
             <div class="preview-meta">
               <strong id="preview-title"></strong>
@@ -115,7 +115,7 @@
     </main>
 
     <footer class="footer">
-      <span>Les fichiers sont supprimés du serveur automatiquement après 1 h.</span>
+      <span id="retention">Les fichiers sont supprimés du serveur automatiquement après 1 h.</span>
     </footer>
   </div>
 

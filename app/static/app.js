@@ -11,6 +11,7 @@
     fieldAformat: $("field-aformat"), fieldBitrate: $("field-bitrate"),
     thumb: $("thumb"), subs: $("subs"), wrapSubs: $("wrap-subs"), playlist: $("playlist"),
     jobsSection: $("jobs-section"), jobs: $("jobs"), clear: $("clear"), tpl: $("job-tpl"),
+    retention: $("retention"),
   };
 
   const STORAGE_KEY = "ytdl.jobs";
@@ -51,6 +52,20 @@
     const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = Math.floor(s % 60);
     return h ? `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`
              : `${m}:${String(sec).padStart(2, "0")}`;
+  };
+
+  // Durée de rétention réelle du serveur, affichée en pied de page.
+  const humanTtl = (seconds) => {
+    const minutes = Math.round(seconds / 60);
+    if (minutes < 60) return `${minutes} min`;
+    const h = Math.floor(minutes / 60), m = minutes % 60;
+    return m ? `${h} h ${m}` : `${h} h`;
+  };
+
+  const applyRetention = (seconds) => {
+    if (!el.retention || !Number.isFinite(seconds) || seconds <= 0) return;
+    el.retention.textContent =
+      `Les fichiers sont supprimés du serveur automatiquement après ${humanTtl(seconds)}.`;
   };
 
   // Suivi local des jobs lancés par ce navigateur, utilisé hors mode partagé.
@@ -97,16 +112,34 @@
   let infoTimer = null;
   let lastPreviewed = "";
 
+  // Squelette pendant l'appel à /api/info : la carte occupe déjà sa place finale.
+  const showSkeleton = () => {
+    el.previewThumb.hidden = false;
+    el.previewThumb.removeAttribute("src");
+    el.previewTitle.textContent = "";
+    el.previewSub.textContent = "";
+    el.preview.setAttribute("aria-busy", "true");
+    el.preview.classList.add("skeleton");
+    el.preview.classList.remove("hidden");
+  };
+
+  const hidePreview = () => {
+    el.preview.classList.add("hidden");
+    el.preview.classList.remove("skeleton");
+    el.preview.setAttribute("aria-busy", "false");
+  };
+
   el.url.addEventListener("input", () => {
     clearTimeout(infoTimer);
     showError("");
     const url = el.url.value.trim();
     if (!/^https?:\/\/\S+$/.test(url)) {
-      el.preview.classList.add("hidden");
+      hidePreview();
       lastPreviewed = "";
       return;
     }
     if (url === lastPreviewed) return;
+    showSkeleton();
     infoTimer = setTimeout(() => loadPreview(url), 500);
   });
 
@@ -116,6 +149,8 @@
       if (el.url.value.trim() !== url) return;
       lastPreviewed = url;
 
+      el.preview.classList.remove("skeleton");
+      el.preview.setAttribute("aria-busy", "false");
       el.previewThumb.hidden = !info.thumbnail;
       if (info.thumbnail) el.previewThumb.src = info.thumbnail;
       el.previewTitle.textContent = info.title || "Sans titre";
@@ -130,7 +165,8 @@
       }
       syncQualityOptions(info.qualities);
     } catch (err) {
-      el.preview.classList.add("hidden");
+      if (el.url.value.trim() !== url) return;
+      hidePreview();
       showError(err.message);
     }
   }
@@ -309,7 +345,11 @@
 
     // Le mode de partage est décidé par le serveur ; en cas d'échec on reste sur
     // le comportement privé, qui n'expose jamais les jobs des autres.
-    try { shareJobs = (await api("/api/health")).shareJobs === true; } catch { /* défaut */ }
+    try {
+      const health = await api("/api/health");
+      shareJobs = health.shareJobs === true;
+      applyRetention(health.fileTtlSeconds);
+    } catch { /* défaut */ }
 
     // poll() règle lui-même sa cadence, ou s'arrête s'il n'y a rien à suivre.
     await poll();
