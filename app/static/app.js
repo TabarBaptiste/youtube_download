@@ -193,6 +193,9 @@
       node.dataset.id = job.id;
       node.querySelector(".job-close").addEventListener("click", () => removeJob(job.id));
       node.querySelector(".job-cancel").addEventListener("click", () => cancelJob(job.id));
+      node.querySelector(".dl").addEventListener("click", () => {
+        node.querySelector(".job-saved").classList.remove("hidden");
+      });
       el.jobs.prepend(node);
     }
 
@@ -323,6 +326,7 @@
       rememberId(job.id);
       renderJob(job);
       startPolling();
+      el.url.value = "";
     } catch (err) {
       showError(err.message);
     } finally {
