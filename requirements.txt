@@ -6,3 +6,5 @@ yt-dlp-ejs
 # Plugin yt-dlp qui récupère les PO Tokens auprès du service bgutil.
 bgutil-ytdlp-pot-provider
 python-multipart==0.0.20
+# Requis par yt-dlp pour intégrer la miniature dans les fichiers Opus/M4A.
+mutagen

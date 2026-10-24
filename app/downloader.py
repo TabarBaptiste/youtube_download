@@ -146,12 +146,15 @@ def build_opts(job: Job, outdir: Path) -> dict:
             opts["subtitleslangs"] = ["fr", "en", "-live_chat"]
             postprocessors.append({"key": "FFmpegEmbedSubtitle", "already_have_subtitle": False})
 
+    # Les métadonnées doivent précéder la miniature : réécrire un fichier Opus
+    # qui contient déjà la pochette fait échouer FFmpeg.
+    postprocessors.append({"key": "FFmpegMetadata", "add_metadata": True})
+
     if job.embed_thumbnail and job.fmt in {"mp3", "m4a", "opus", "mp4", "mkv"}:
         opts["writethumbnail"] = True
         postprocessors.append({"key": "FFmpegThumbnailsConvertor", "format": "jpg"})
         postprocessors.append({"key": "EmbedThumbnail", "already_have_thumbnail": False})
 
-    postprocessors.append({"key": "FFmpegMetadata", "add_metadata": True})
     opts["postprocessors"] = postprocessors
 
     if job.playlist:
@@ -328,7 +331,7 @@ def friendly_error(exc: Exception) -> str:
         return "Vidéo soumise à une restriction d'âge : un fichier de cookies est nécessaire."
     if "video unavailable" in lowered or "removed" in lowered:
         return "Vidéo indisponible ou supprimée."
-    if "404" in lowered or "not found" in lowered:
+    if "404" in lowered or ("not found" in lowered and "module" not in lowered):
         return "Introuvable (404) : vérifiez l'URL."
     if "unsupported url" in lowered:
         return "URL non prise en charge."
