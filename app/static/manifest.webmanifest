@@ -1,7 +1,7 @@
 {
   "name": "YT Downloader",
   "short_name": "YT DL",
-  "description": "Télécharge des vidéos YouTube en MP4 ou MP3.",
+  "description": "Télécharge des vidéos YouTube ou X (Twitter) en MP4 ou MP3.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

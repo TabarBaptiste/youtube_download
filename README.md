@@ -21,6 +21,9 @@ récupérer le fichier final.
 - **Nettoyage automatique** : les fichiers sont supprimés du serveur après expiration.
 
 Les URLs ne sont pas limitées à YouTube : tout site géré par yt-dlp fonctionne.
+Pour Twitter/X (`twitter.com`, `x.com`), le téléchargement privilégie le flux MP4
+progressif de meilleur débit (les variantes HLS sont ~4× moins riches). Les tweets
+protégés ou « sensibles » nécessitent un fichier de cookies.
 
 ## Démarrage rapide
 

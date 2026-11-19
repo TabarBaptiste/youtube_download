@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>YT Downloader</title>
-  <meta name="description" content="Téléchargez des vidéos YouTube en MP4 ou MP3." />
+  <meta name="description" content="Téléchargez des vidéos YouTube ou X (Twitter) en MP4 ou MP3." />
   <meta name="theme-color" content="#0f1115" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" href="/icon.svg" type="image/svg+xml" />
@@ -97,7 +97,7 @@
           <div class="switches">
             <label class="switch"><input type="checkbox" id="thumb" checked /><span>Intégrer la miniature</span></label>
             <label class="switch hidden" id="wrap-subs"><input type="checkbox" id="subs" /><span>Intégrer les sous-titres</span></label>
-            <label class="switch"><input type="checkbox" id="playlist" /><span>Playlist entière (ZIP)</span></label>
+            <label class="switch" id="wrap-playlist"><input type="checkbox" id="playlist" /><span>Playlist entière (ZIP)</span></label>
           </div>
 
           <button type="submit" id="submit" class="primary">Télécharger</button>

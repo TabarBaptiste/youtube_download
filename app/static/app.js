@@ -10,6 +10,7 @@
     fieldVformat: $("field-vformat"), fieldQuality: $("field-quality"),
     fieldAformat: $("field-aformat"), fieldBitrate: $("field-bitrate"),
     thumb: $("thumb"), subs: $("subs"), wrapSubs: $("wrap-subs"), playlist: $("playlist"),
+    wrapPlaylist: $("wrap-playlist"),
     jobsSection: $("jobs-section"), jobs: $("jobs"), clear: $("clear"), tpl: $("job-tpl"),
     retention: $("retention"),
   };
@@ -80,11 +81,21 @@
 
   const applyMode = () => {
     const audio = mode === "audio";
+    const twitter = isTwitterUrl(el.url.value.trim());
     el.fieldVformat.classList.toggle("hidden", audio);
     el.fieldQuality.classList.toggle("hidden", audio);
     el.fieldAformat.classList.toggle("hidden", !audio);
     el.fieldBitrate.classList.toggle("hidden", !audio || el.aformat.value === "wav");
-    el.wrapSubs.classList.toggle("hidden", audio);
+    // Sous-titres et playlists n'existent pas sur X/Twitter.
+    el.wrapSubs.classList.toggle("hidden", audio || twitter);
+    el.wrapPlaylist.classList.toggle("hidden", twitter);
+  };
+
+  const isTwitterUrl = (url) => {
+    try {
+      const h = new URL(url).hostname.toLowerCase();
+      return /(^|\.)(twitter|x|fxtwitter|vxtwitter)\.com$/.test(h);
+    } catch { return false; }
   };
 
   document.querySelectorAll(".tab").forEach((tab) => {
@@ -99,12 +110,21 @@
   el.aformat.addEventListener("change", applyMode);
 
   el.paste.addEventListener("click", async () => {
+    // Sur iOS, l'API presse-papiers peut être absente (page non sécurisée,
+    // PWA) ou refusée : on bascule alors sur le collage natif dans le champ.
+    let text = "";
     try {
-      el.url.value = (await navigator.clipboard.readText()).trim();
+      if (navigator.clipboard?.readText) text = (await navigator.clipboard.readText()).trim();
+    } catch { /* refusé ou indisponible */ }
+
+    if (text) {
+      el.url.value = text;
       el.url.dispatchEvent(new Event("input"));
-    } catch {
-      el.url.focus();
+      return;
     }
+    el.url.focus();
+    el.url.select();
+    showError("Collage automatique indisponible : appuyez dans le champ, puis choisissez « Coller ».");
   });
 
   // ------------------------------------------------------------- aperçu URL --
@@ -132,6 +152,7 @@
   el.url.addEventListener("input", () => {
     clearTimeout(infoTimer);
     showError("");
+    applyMode();
     const url = el.url.value.trim();
     if (!/^https?:\/\/\S+$/.test(url)) {
       hidePreview();
@@ -316,8 +337,10 @@
       ? { url, format: el.aformat.value, audioBitrate: el.bitrate.value }
       : { url, format: el.vformat.value, quality: el.quality.value, embedSubs: el.subs.checked };
 
+    const twitter = isTwitterUrl(url);
+    if (twitter) payload.embedSubs = false;
     payload.embedThumbnail = el.thumb.checked;
-    payload.playlist = el.playlist.checked;
+    payload.playlist = twitter ? false : el.playlist.checked;
 
     el.submit.disabled = true;
     el.submit.textContent = "Lancement…";
@@ -326,7 +349,12 @@
       rememberId(job.id);
       renderJob(job);
       startPolling();
+      // Le téléchargement a démarré : on libère le champ et l'aperçu.
+      clearTimeout(infoTimer);
       el.url.value = "";
+      lastPreviewed = "";
+      hidePreview();
+      applyMode();
     } catch (err) {
       showError(err.message);
     } finally {

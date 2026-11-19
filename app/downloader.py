@@ -8,6 +8,7 @@ import time
 import zipfile
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
 import yt_dlp
 
@@ -112,11 +113,24 @@ def fetch_info(url: str) -> dict:
 # Construction des options de téléchargement
 # --------------------------------------------------------------------------- #
 
+_TWITTER_HOSTS = {"twitter.com", "x.com", "mobile.twitter.com", "mobile.x.com", "fxtwitter.com", "vxtwitter.com"}
+
+
+def _is_twitter(url: str) -> bool:
+    host = (urlparse(url).hostname or "").lower()
+    return host in _TWITTER_HOSTS or host.endswith((".twitter.com", ".x.com"))
+
+
 def _format_selector(job: Job) -> str:
     if job.fmt in AUDIO_FORMATS:
         return "bestaudio/best"
 
     height = "" if job.quality == "best" else f"[height<={job.quality}]"
+    if _is_twitter(job.url):
+        # Twitter propose des MP4 progressifs (« http-* ») bien plus riches que
+        # les variantes HLS de même résolution (~2 Mb/s contre ~0,5 Mb/s) : on
+        # ne force pas avc1/mp4a et on laisse le tri par débit (voir build_opts).
+        return f"bv*{height}+ba/b{height}/bv*+ba/b"
     if job.fmt == "mp4":
         # On privilégie H.264 + AAC : le combo lisible partout sans réencodage.
         return (
@@ -129,9 +143,13 @@ def _format_selector(job: Job) -> str:
 def build_opts(job: Job, outdir: Path) -> dict:
     opts = base_opts()
     opts["format"] = _format_selector(job)
+    if _is_twitter(job.url):
+        # À résolution égale, préférer le meilleur débit (flux progressif).
+        opts["format_sort"] = ["res", "tbr"]
     opts["outtmpl"] = str(outdir / "%(title).100B [%(id)s].%(ext)s")
     opts["noplaylist"] = not job.playlist
     postprocessors: list[dict] = []
+    embed_subs = job.embed_subs and not _is_twitter(job.url)  # pas de sous-titres sur X
 
     if job.fmt in AUDIO_FORMATS:
         pp = {"key": "FFmpegExtractAudio", "preferredcodec": job.fmt}
@@ -140,7 +158,7 @@ def build_opts(job: Job, outdir: Path) -> dict:
         postprocessors.append(pp)
     else:
         opts["merge_output_format"] = job.fmt
-        if job.embed_subs:
+        if embed_subs:
             opts["writesubtitles"] = True
             opts["writeautomaticsub"] = True
             opts["subtitleslangs"] = ["fr", "en", "-live_chat"]
@@ -188,7 +206,24 @@ def _human_eta(seconds: Optional[float]) -> Optional[str]:
     return f"{seconds // 60}m{seconds % 60:02d}s"
 
 
+def _stream_weights(info: dict) -> list[float]:
+    """Poids (part du total) de chaque flux à télécharger pour un élément.
+
+    Vidéo + audio sont deux téléchargements successifs : sans cela, la barre
+    ferait 0→100 % pour la vidéo puis recommencerait pour l'audio.
+    """
+    formats = info.get("requested_formats") or [info]
+    sizes = [f.get("filesize") or f.get("filesize_approx") or 0 for f in formats]
+    if all(sizes):
+        total = sum(sizes)
+        return [s / total for s in sizes]
+    return [1 / len(formats)] * len(formats)
+
+
 def _make_hooks(job: Job):
+    # État du flux courant : fichiers déjà vus pour l'élément en cours.
+    state: dict = {"item": None, "files": []}
+
     def progress_hook(d: dict) -> None:
         if job.cancel_requested:
             raise Cancelled()
@@ -213,10 +248,22 @@ def _make_hooks(job: Job):
         if d["status"] == "downloading":
             total = d.get("total_bytes") or d.get("total_bytes_estimate")
             done = d.get("downloaded_bytes") or 0
-            item_ratio = (done / total) if total else 0.0
+            stream_ratio = (done / total) if total else 0.0
+
+            if state["item"] != info.get("id"):
+                state["item"], state["files"] = info.get("id"), []
+            fname = d.get("filename")
+            if fname not in state["files"]:
+                state["files"].append(fname)
+            weights = _stream_weights(info)
+            idx = min(state["files"].index(fname), len(weights) - 1)
+            item_ratio = sum(weights[:idx]) + weights[idx] * stream_ratio
+
             # Sur une playlist, la progression globale mixe l'index et l'élément courant.
             base = (job.current_item - 1) / max(job.total_items, 1)
-            job.progress = min(99.0, 100 * (base + item_ratio / max(job.total_items, 1)))
+            new = min(99.0, 100 * (base + item_ratio / max(job.total_items, 1)))
+            # Jamais de recul : les estimations de taille (HLS) fluctuent.
+            job.progress = max(job.progress, new)
             job.speed = _human_speed(d.get("speed"))
             job.eta = _human_eta(d.get("eta"))
             job.status = "downloading"
@@ -325,6 +372,12 @@ def friendly_error(exc: Exception) -> str:
             "Vérifiez PLAYER_CLIENTS et POT_PROVIDER_URL (voir README), ou à "
             "défaut renseignez des cookies via COOKIES_FILE/COOKIES_B64."
         )
+    if "no video could be found in this tweet" in lowered:
+        return "Aucune vidéo dans ce tweet (ou il est supprimé / réservé à des abonnés)."
+    if "protected" in lowered and "tweet" in lowered:
+        return "Ce compte est protégé : un fichier de cookies est nécessaire."
+    if "nsfw" in lowered or "age-restricted" in lowered or "sensitive" in lowered:
+        return "Contenu sensible : un fichier de cookies (compte connecté) est nécessaire."
     if "members-only" in lowered or "premium" in lowered:
         return "Cette vidéo est réservée aux membres ou abonnés."
     if "age" in lowered and "restrict" in lowered:
